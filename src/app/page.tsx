@@ -208,6 +208,7 @@ export default function Home() {
         <TextbookReader
           chapters={chapterContents}
           topic={topic}
+          level={level}
           onGoToQuiz={() => setPhase("quiz")}
         />
       );
