@@ -12,9 +12,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "ANTHROPIC_API_KEY が設定されていません", envKeys: Object.keys(process.env).filter(k => k.includes("ANTHROPIC") || k.includes("STRIPE")).join(", ") },
+        { status: 500 }
+      );
+    }
+
+    const client = new Anthropic({ apiKey });
 
     const levelLabel =
       level === "beginner"
