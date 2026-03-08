@@ -1,32 +1,35 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic();
-
 export async function POST(request: Request) {
-  const { topic, level } = await request.json();
+  try {
+    const { topic, level } = await request.json();
 
-  if (!topic || !level) {
-    return NextResponse.json(
-      { error: "topic と level は必須です" },
-      { status: 400 }
-    );
-  }
+    if (!topic || !level) {
+      return NextResponse.json(
+        { error: "topic と level は必須です" },
+        { status: 400 }
+      );
+    }
 
-  const levelLabel =
-    level === "beginner"
-      ? "初心者"
-      : level === "intermediate"
-        ? "中級者"
-        : "上級者";
+    const client = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
 
-  const message = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 2048,
-    messages: [
-      {
-        role: "user",
-        content: `あなたは教科書の構成を設計する専門家です。
+    const levelLabel =
+      level === "beginner"
+        ? "初心者"
+        : level === "intermediate"
+          ? "中級者"
+          : "上級者";
+
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 2048,
+      messages: [
+        {
+          role: "user",
+          content: `あなたは教科書の構成を設計する専門家です。
 テーマ: 「${topic}」
 レベル: ${levelLabel}
 
@@ -35,14 +38,21 @@ export async function POST(request: Request) {
 
 以下のJSON形式のみで返してください。説明文やマークダウンは不要です:
 {"chapters": [{"chapter": 1, "title": "...", "summary": "...", "sections": ["...", "..."]}]}`,
-      },
-    ],
-  });
+        },
+      ],
+    });
 
-  const text =
-    message.content[0].type === "text" ? message.content[0].text : "";
-  const cleaned = text.replace(/```json|```/g, "").trim();
-  const data = JSON.parse(cleaned);
+    const text =
+      message.content[0].type === "text" ? message.content[0].text : "";
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const data = JSON.parse(cleaned);
 
-  return NextResponse.json(data);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("TOC generation error:", error);
+    return NextResponse.json(
+      { error: String(error) },
+      { status: 500 }
+    );
+  }
 }

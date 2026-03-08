@@ -139,15 +139,23 @@ export default function Home() {
     setLevel(l);
     setTocLoading(true);
 
-    const res = await fetch("/api/generate/toc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: t, level: l }),
-    });
-    const data = await res.json();
-    setChapters(data.chapters);
-    setTocLoading(false);
-    setPhase("toc-review");
+    try {
+      const res = await fetch("/api/generate/toc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: t, level: l }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.chapters) {
+        throw new Error(data.error || "目次の生成に失敗しました");
+      }
+      setChapters(data.chapters);
+      setPhase("toc-review");
+    } catch (error) {
+      alert(`エラー: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setTocLoading(false);
+    }
   };
 
   const handleTocApprove = async (approved: ChapterOutline[]) => {
