@@ -7,6 +7,7 @@ import {
   ChapterOutline,
   ChapterContent,
   QuizQuestion,
+  SavedTextbook,
 } from "@/types";
 import InputPhase from "@/components/InputPhase";
 import TocReview from "@/components/TocReview";
@@ -29,6 +30,48 @@ export default function Home() {
   const [quizAnswers, setQuizAnswers] = useState<
     Record<number, number | string>
   >({});
+  const [savedTextbooks, setSavedTextbooks] = useState<SavedTextbook[]>([]);
+
+  // Load saved textbooks from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("manaberu_textbooks");
+    if (saved) {
+      setSavedTextbooks(JSON.parse(saved));
+    }
+  }, []);
+
+  const saveTextbook = (
+    t: string,
+    l: Level,
+    contents: ChapterContent[],
+    quiz: QuizQuestion[]
+  ) => {
+    const textbook: SavedTextbook = {
+      id: Date.now().toString(),
+      topic: t,
+      level: l,
+      chapters: contents,
+      questions: quiz,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [textbook, ...savedTextbooks];
+    setSavedTextbooks(updated);
+    localStorage.setItem("manaberu_textbooks", JSON.stringify(updated));
+  };
+
+  const loadTextbook = (textbook: SavedTextbook) => {
+    setTopic(textbook.topic);
+    setLevel(textbook.level);
+    setChapterContents(textbook.chapters);
+    setQuestions(textbook.questions);
+    setPhase("textbook");
+  };
+
+  const deleteTextbook = (id: string) => {
+    const updated = savedTextbooks.filter((t) => t.id !== id);
+    setSavedTextbooks(updated);
+    localStorage.setItem("manaberu_textbooks", JSON.stringify(updated));
+  };
 
   // Handle Stripe checkout return
   useEffect(() => {
@@ -131,6 +174,9 @@ export default function Home() {
     setQuestions(quizData);
     setIsGeneratingQuiz(false);
 
+    // 自動保存
+    saveTextbook(t, l, contents, quizData);
+
     setPhase("textbook");
   };
 
@@ -180,7 +226,15 @@ export default function Home() {
 
   switch (phase) {
     case "input":
-      return <InputPhase onSubmit={handleInputSubmit} loading={tocLoading} />;
+      return (
+        <InputPhase
+          onSubmit={handleInputSubmit}
+          loading={tocLoading}
+          savedTextbooks={savedTextbooks}
+          onLoadTextbook={loadTextbook}
+          onDeleteTextbook={deleteTextbook}
+        />
+      );
 
     case "toc-review":
       return (

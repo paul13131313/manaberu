@@ -40,3 +40,12 @@ export type Phase =
   | "textbook"
   | "quiz"
   | "results";
+
+export interface SavedTextbook {
+  id: string;
+  topic: string;
+  level: Level;
+  chapters: ChapterContent[];
+  questions: QuizQuestion[];
+  createdAt: string;
+}

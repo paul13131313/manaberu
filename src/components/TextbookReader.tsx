@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ChapterContent, Level } from "@/types";
 import RichText from "./RichText";
 import PatternCard from "./PatternCard";
@@ -29,6 +29,65 @@ export default function TextbookReader({
         : "上級者向け";
 
   const isCover = activeChapter === -1;
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPdf = async () => {
+    setPdfLoading(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+
+      // PDF用のHTMLを構築
+      const container = document.createElement("div");
+      container.style.cssText = "font-family: 'Noto Sans JP', sans-serif; color: #1a1a2e; padding: 40px; max-width: 700px;";
+
+      // 表紙
+      container.innerHTML = `
+        <div style="text-align: center; padding: 80px 20px; page-break-after: always;">
+          <div style="font-size: 36px; font-weight: bold; font-family: 'Noto Serif JP', serif; margin-bottom: 16px;">${topic}</div>
+          <div style="font-size: 16px; color: #8a8570; margin-bottom: 8px;">${levelLabel}</div>
+          <div style="font-size: 14px; color: #8a8570;">全${chapters.length}章 ・ AI生成教科書</div>
+          <div style="font-size: 12px; color: #8a8570; margin-top: 40px;">まなべーる で生成</div>
+        </div>
+      `;
+
+      // 各章の内容
+      for (const ch of chapters) {
+        const chapterHtml = `
+          <div style="page-break-before: always; padding-top: 20px;">
+            <h1 style="font-size: 24px; font-weight: bold; font-family: 'Noto Serif JP', serif; margin-bottom: 20px; color: #c0392b;">${ch.title}</h1>
+            <div style="font-size: 14px; line-height: 1.8; white-space: pre-wrap;">${ch.content}</div>
+            ${ch.keyPoints.length > 0 ? `
+              <div style="margin-top: 24px; padding: 16px; background: #faf8f0; border: 1px solid #e8e4d9; border-radius: 8px;">
+                <div style="font-weight: bold; margin-bottom: 8px;">この章の要点</div>
+                <ul style="margin: 0; padding-left: 20px;">
+                  ${ch.keyPoints.map((p) => `<li style="margin-bottom: 4px; font-size: 13px;">${p}</li>`).join("")}
+                </ul>
+              </div>
+            ` : ""}
+          </div>
+        `;
+        container.innerHTML += chapterHtml;
+      }
+
+      await html2pdf()
+        .set({
+          margin: [15, 15, 15, 15],
+          filename: `${topic}_教科書.pdf`,
+          image: { type: "jpeg", quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"] },
+        })
+        .from(container)
+        .save();
+    } catch (error) {
+      alert("PDF生成中にエラーが発生しました");
+      console.error(error);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -104,6 +163,13 @@ export default function TextbookReader({
         >
           問題を解く
         </button>
+        <button
+          onClick={handleDownloadPdf}
+          disabled={pdfLoading}
+          className="w-full mt-3 py-3 rounded-lg border border-border text-dark font-bold text-sm hover:border-accent hover:text-accent transition disabled:opacity-50"
+        >
+          {pdfLoading ? "PDF生成中..." : "PDF保存"}
+        </button>
       </aside>
 
       {/* Main content */}
@@ -151,15 +217,24 @@ export default function TextbookReader({
               ))}
             </div>
 
-            <button
-              onClick={() => setActiveChapter(0)}
-              className="mt-10 px-8 py-3 rounded-lg text-white font-bold transition"
-              style={{
-                background: "linear-gradient(135deg, #c0392b, #96281b)",
-              }}
-            >
-              第1章から読む →
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 mt-10">
+              <button
+                onClick={() => setActiveChapter(0)}
+                className="px-8 py-3 rounded-lg text-white font-bold transition"
+                style={{
+                  background: "linear-gradient(135deg, #c0392b, #96281b)",
+                }}
+              >
+                第1章から読む →
+              </button>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading}
+                className="px-8 py-3 rounded-lg border-2 border-border text-dark font-bold hover:border-accent hover:text-accent transition disabled:opacity-50"
+              >
+                {pdfLoading ? "PDF生成中..." : "PDFでダウンロード"}
+              </button>
+            </div>
           </div>
         ) : (
           /* 章の内容 */
