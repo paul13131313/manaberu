@@ -29,16 +29,21 @@ export default function TocReview({
       JSON.stringify({ topic, level, chapters })
     );
 
-    const res = await fetch("/api/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic, level }),
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, level }),
+      });
+      const data = await res.json();
 
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || "決済URLの取得に失敗しました");
+      }
+    } catch (error) {
+      alert(`エラー: ${error instanceof Error ? error.message : String(error)}`);
       setCheckoutLoading(false);
     }
   };
